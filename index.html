@@ -3,36 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Snake</title>
+<title>Limitless Snake</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #111; color: #fff; font-family: -apple-system, sans-serif; touch-action: none; overflow: hidden; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-#score { font-size: 1.2rem; margin-bottom: 8px; }
-canvas { border: 2px solid #444; border-radius: 8px; display: block; }
-#overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); z-index: 10; }
-#overlay h1 { font-size: 1.8rem; margin-bottom: 12px; }
-#overlay p { font-size: 1rem; opacity: 0.7; margin-bottom: 20px; }
-#overlay button { padding: 14px 36px; font-size: 1.1rem; border: none; border-radius: 12px; background: #4CAF50; color: #fff; cursor: pointer; }
-#overlay button:active { background: #388E3C; }
+body { background: #0a0a1a; color: #fff; font-family: -apple-system, sans-serif; touch-action: none; overflow: hidden; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#score { font-size: 1.1rem; margin-bottom: 8px; color: #a78bfa; font-weight: 600; letter-spacing: 0.5px; }
+canvas { border-radius: 12px; display: block; box-shadow: 0 0 40px rgba(139, 92, 246, 0.3); }
+#overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(10,10,26,0.92); z-index: 10; }
+#overlay h1 { font-size: 2rem; margin-bottom: 4px; background: linear-gradient(135deg, #a78bfa, #7c3aed, #6d28d9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+#overlay .sub { font-size: 0.9rem; color: #7c3aed; margin-bottom: 16px; letter-spacing: 2px; text-transform: uppercase; }
+#overlay p { font-size: 1rem; opacity: 0.6; margin-bottom: 24px; }
+#overlay button { padding: 14px 40px; font-size: 1.1rem; border: none; border-radius: 30px; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; cursor: pointer; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4); }
+#overlay button:active { transform: scale(0.97); background: linear-gradient(135deg, #6d28d9, #5b21b6); }
+#finalScore { display: none; font-size: 3rem; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #a78bfa, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 </style>
 </head>
 <body>
-<div id="score">Score: 0</div>
+<div id="score">🧠 Limitless — Score: 0</div>
 <canvas id="c"></canvas>
 <div id="overlay">
-  <h1>🐍 Snake</h1>
+  <h1>Limitless Snake</h1>
+  <div class="sub">Powered by AI • Probably</div>
   <p>Swipe to move</p>
-  <button id="startBtn">Play</button>
+  <div id="finalScore"></div>
+  <button id="startBtn">Activate</button>
 </div>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const overlay = document.getElementById('overlay');
 const scoreEl = document.getElementById('score');
+const finalScoreEl = document.getElementById('finalScore');
 
 const GRID = 20;
 let cols, rows, cell;
-let snake, dir, nextDir, food, score, running, speed, lastTime;
+let snake, dir, nextDir, food, score, running, speed, lastTime, particles;
+
+// Dan face (cartoon) as pre-rendered image
+const danCanvas = document.createElement('canvas');
+const danCtx = danCanvas.getContext('2d');
+function renderDan(size) {
+  danCanvas.width = size;
+  danCanvas.height = size;
+  const c = danCtx;
+  const cx = size/2, cy = size/2, r = size*0.45;
+
+  // Head
+  c.fillStyle = '#f4c794';
+  c.beginPath();
+  c.arc(cx, cy, r, 0, Math.PI*2);
+  c.fill();
+
+  // Hair
+  c.fillStyle = '#3b2517';
+  c.beginPath();
+  c.arc(cx, cy - r*0.15, r*1.05, Math.PI, 0);
+  c.fill();
+
+  // Glasses frames
+  c.strokeStyle = '#1a1a2e';
+  c.lineWidth = size*0.04;
+  const gy = cy + r*0.05;
+  // Left lens
+  c.beginPath();
+  c.arc(cx - r*0.35, gy, r*0.22, 0, Math.PI*2);
+  c.stroke();
+  // Right lens
+  c.beginPath();
+  c.arc(cx + r*0.35, gy, r*0.22, 0, Math.PI*2);
+  c.stroke();
+  // Bridge
+  c.beginPath();
+  c.moveTo(cx - r*0.13, gy);
+  c.lineTo(cx + r*0.13, gy);
+  c.stroke();
+  // Temples
+  c.beginPath();
+  c.moveTo(cx - r*0.57, gy);
+  c.lineTo(cx - r*0.9, gy - r*0.1);
+  c.stroke();
+  c.beginPath();
+  c.moveTo(cx + r*0.57, gy);
+  c.lineTo(cx + r*0.9, gy - r*0.1);
+  c.stroke();
+
+  // Eyes
+  c.fillStyle = '#1a1a2e';
+  c.beginPath();
+  c.arc(cx - r*0.35, gy + r*0.02, r*0.07, 0, Math.PI*2);
+  c.fill();
+  c.beginPath();
+  c.arc(cx + r*0.35, gy + r*0.02, r*0.07, 0, Math.PI*2);
+  c.fill();
+
+  // Smile
+  c.strokeStyle = '#b8764e';
+  c.lineWidth = size*0.025;
+  c.beginPath();
+  c.arc(cx, cy + r*0.3, r*0.25, 0.1*Math.PI, 0.9*Math.PI);
+  c.stroke();
+
+  return danCanvas;
+}
+let danImg = renderDan(64);
 
 function resize() {
   const maxW = Math.min(window.innerWidth - 20, 420);
@@ -42,17 +115,19 @@ function resize() {
   cell = Math.min(maxW / cols, maxH / rows);
   canvas.width = cols * cell;
   canvas.height = rows * cell;
+  danImg = renderDan(Math.floor(cell * 1.2));
 }
 
 function init() {
   resize();
   const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
-  snake = [{x: cx, y: cy}, {x: cx - 1, y: cy}, {x: cx - 2, y: cy}];
+  snake = [{x: cx, y: cy}, {x: cx - 1, y: cy}, {x: cx - 2, y: cy}, {x: cx - 3, y: cy}];
   dir = {x: 1, y: 0};
   nextDir = {x: 1, y: 0};
   score = 0;
-  speed = 120;
-  scoreEl.textContent = 'Score: 0';
+  speed = 115;
+  particles = [];
+  scoreEl.textContent = '🧠 Limitless — Score: 0';
   placeFood();
 }
 
@@ -64,38 +139,93 @@ function placeFood() {
   food = pos;
 }
 
+function spawnParticles(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd = 1 + Math.random() * 3;
+    particles.push({
+      x: (x + 0.5) * cell, y: (y + 0.5) * cell,
+      vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+      life: 1, decay: 0.02 + Math.random() * 0.03,
+      size: 2 + Math.random() * 3,
+      color: ['#a78bfa','#7c3aed','#c4b5fd','#ddd6fe'][Math.floor(Math.random()*4)]
+    });
+  }
+}
+
 function draw() {
-  ctx.fillStyle = '#1a1a2e';
+  // Background gradient
+  const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  bg.addColorStop(0, '#0f0a2e');
+  bg.addColorStop(1, '#1a0a3e');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Food
-  ctx.fillStyle = '#e74c3c';
-  ctx.beginPath();
-  ctx.arc((food.x + 0.5) * cell, (food.y + 0.5) * cell, cell * 0.4, 0, Math.PI * 2);
-  ctx.fill();
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(139,92,246,0.06)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= cols; x++) { ctx.beginPath(); ctx.moveTo(x*cell, 0); ctx.lineTo(x*cell, rows*cell); ctx.stroke(); }
+  for (let y = 0; y <= rows; y++) { ctx.beginPath(); ctx.moveTo(0, y*cell); ctx.lineTo(cols*cell, y*cell); ctx.stroke(); }
 
-  // Snake
+  // Food (glowing pendant/brain icon)
+  const ft = Date.now() / 500;
+  const glow = 0.4 + Math.sin(ft) * 0.2;
+  ctx.shadowColor = '#a78bfa';
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = `rgba(167,139,250,${glow})`;
+  ctx.beginPath();
+  ctx.arc((food.x + 0.5) * cell, (food.y + 0.5) * cell, cell * 0.38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#c4b5fd';
+  ctx.font = `${cell * 0.6}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🧠', (food.x + 0.5) * cell, (food.y + 0.5) * cell + 1);
+
+  // Snake body
   snake.forEach((s, i) => {
-    const g = i === 0 ? '#4CAF50' : '#2E7D32';
-    ctx.fillStyle = g;
-    const pad = 1;
-    ctx.fillRect(s.x * cell + pad, s.y * cell + pad, cell - pad * 2, cell - pad * 2);
-    if (i === 0) {
-      ctx.fillStyle = '#fff';
-      const ex = (s.x + 0.5 + dir.x * 0.2) * cell;
-      const ey = (s.y + 0.5 + dir.y * 0.2) * cell;
-      ctx.beginPath();
-      ctx.arc(ex, ey, cell * 0.12, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    if (i === 0) return;
+    const t = i / snake.length;
+    const r = Math.floor(91 + t * 30);
+    const g = Math.floor(58 + t * 20);
+    const b = Math.floor(237 - t * 60);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    const pad = 1.5;
+    const radius = 4;
+    const x = s.x * cell + pad, y = s.y * cell + pad, w = cell - pad*2, h = cell - pad*2;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.fill();
   });
+
+  // Snake head — Dan's face!
+  const head = snake[0];
+  ctx.drawImage(danImg, head.x * cell - cell*0.1, head.y * cell - cell*0.1, cell * 1.2, cell * 1.2);
+
+  // Particles
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
 }
 
 function step() {
   dir = nextDir;
   const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
 
-  // Wrap walls
   if (head.x < 0) head.x = cols - 1;
   if (head.x >= cols) head.x = 0;
   if (head.y < 0) head.y = rows - 1;
@@ -109,19 +239,31 @@ function step() {
   snake.unshift(head);
   if (head.x === food.x && head.y === food.y) {
     score++;
-    scoreEl.textContent = 'Score: ' + score;
+    scoreEl.textContent = '🧠 Limitless — Score: ' + score;
+    spawnParticles(food.x, food.y);
     placeFood();
-    if (speed > 60) speed -= 2;
+    if (speed > 55) speed -= 2;
   } else {
     snake.pop();
   }
+
+  // Update particles
+  particles = particles.filter(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+    return p.life > 0;
+  });
 }
 
 function gameOver() {
   running = false;
-  overlay.querySelector('h1').textContent = '💀 Game Over';
-  overlay.querySelector('p').textContent = 'Score: ' + score;
-  document.getElementById('startBtn').textContent = 'Play Again';
+  overlay.querySelector('h1').textContent = '💀 Limit Reached';
+  overlay.querySelector('.sub').textContent = 'Your memory failed you';
+  overlay.querySelector('p').textContent = '';
+  finalScoreEl.textContent = score;
+  finalScoreEl.style.display = 'block';
+  document.getElementById('startBtn').textContent = 'Try Again';
   overlay.style.display = 'flex';
 }
 
@@ -138,6 +280,10 @@ function loop(ts) {
 
 document.getElementById('startBtn').addEventListener('click', () => {
   overlay.style.display = 'none';
+  finalScoreEl.style.display = 'none';
+  overlay.querySelector('h1').textContent = 'Limitless Snake';
+  overlay.querySelector('.sub').textContent = 'Powered by AI • Probably';
+  overlay.querySelector('p').textContent = 'Swipe to move';
   init();
   running = true;
   lastTime = 0;
